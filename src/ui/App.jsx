@@ -9,13 +9,14 @@ import { Dogs, Dog } from './Dogs.jsx';
 import { Training } from './Training.jsx';
 import { Settings, SetGeneral, SetMessage, SetPrices, SetPlan, SetBackup } from './Settings.jsx';
 import { Account } from './Account.jsx';
+import { Notify } from './Notify.jsx';
 import { useSync } from '../sync.js';
 import { useStore, update, getState } from '../store.js';
 import { checkStay } from '../logic/occupancy.js';
 
 const SCREENS = {
   home: Home, board: Board, dogs: Dogs, dog: Dog, stay: Stay, avail: Avail, training: Training,
-  settings: Settings, 'set-general': SetGeneral, 'set-message': SetMessage, 'set-prices': SetPrices, 'set-plan': SetPlan, 'set-backup': SetBackup, account: Account,
+  settings: Settings, 'set-general': SetGeneral, 'set-message': SetMessage, 'set-prices': SetPrices, 'set-plan': SetPlan, 'set-backup': SetBackup, account: Account, notify: Notify,
 };
 const TABS = [['home', '◉', 'היום'], ['board', '▦', 'לוח'], ['dogs', '🐾', 'כלבים']];
 

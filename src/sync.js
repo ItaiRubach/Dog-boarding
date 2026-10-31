@@ -31,6 +31,7 @@ const saveMeta = () => {
 };
 
 export const getSync = snapshot;
+export const getCloud = () => cloud;
 
 export function useSync() {
   const [s, setS] = useState(snapshot());

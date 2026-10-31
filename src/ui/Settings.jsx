@@ -43,6 +43,7 @@ export function Settings({ state }) {
           {row('קוד מנהל', '••••', 'set-general')}
           {row('גיבוי, שחזור ונתוני דוגמה', '', 'set-backup')}
           {row('ענן וסנכרון', syncLabel(sync), 'account')}
+          {row('התראות', 'בוקר · ערב · לפני אילוף וכניסה', 'notify')}
           <div class="row static"><span class="grow">יומן Google<small>בשלב הבא</small></span><span class="pill w">בהמשך</span></div>
         </div>
       </main>

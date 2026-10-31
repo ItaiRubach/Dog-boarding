@@ -1,0 +1,30 @@
+// Real push round trip in Edge: sign up, turn on notifications, ask the server for a test push,
+// and check that the browser actually displayed it.
+import { chromium } from 'playwright-core';
+const [url, out] = process.argv.slice(2);
+const ctx = await chromium.launchPersistentContext('', { channel: 'msedge', headless: true, viewport: { width: 390, height: 844 }, permissions: ['notifications'] });
+const p = await ctx.newPage();
+const errors = [];
+p.on('pageerror', (e) => errors.push(e.message));
+await p.goto(url);
+await p.getByLabel('הגדרות').click();
+await p.getByText('ענן וסנכרון').click();
+await p.getByText('משתמש חדש').click();
+await p.locator('#ac-email').fill(`e2e-push-${Date.now().toString(36)}@example.com`);
+await p.locator('#ac-pw').fill('e2e-push-password');
+await p.getByRole('button', { name: 'הרשמה' }).click();
+await p.getByRole('button', { name: /העלה את הנתונים/ }).click();
+await p.getByText('מגובה בענן').first().waitFor();
+await p.getByRole('button', { name: /חזרה/ }).click();
+await p.getByText('התראות', { exact: true }).click();
+await p.getByRole('button', { name: 'הפעל' }).click();
+await p.getByText('פעילות').waitFor({ timeout: 20000 });
+await p.getByRole('button', { name: 'שלח התראת בדיקה' }).click();
+await p.locator('.issue').last().waitFor();
+console.log('app says:', await p.locator('.issue').last().textContent());
+await p.waitForTimeout(6000);
+const shown = await p.evaluate(async () => (await (await navigator.serviceWorker.ready).getNotifications()).map((n) => `${n.title} | ${n.body}`));
+console.log('displayed:', JSON.stringify(shown));
+await p.screenshot({ path: `${out}/18-notify.png` });
+console.log('errors:', errors.length ? errors.join('\n') : 'none');
+await ctx.close();

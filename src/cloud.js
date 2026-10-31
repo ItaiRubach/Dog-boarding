@@ -46,6 +46,17 @@ export function makeCloud(url = SUPABASE_URL, key = SUPABASE_ANON_KEY) {
     async save(id, data, version) {
       return must(await sb.rpc('save_pension', { p_id: id, p_data: data, p_version: version }));
     },
+    async savePush(pensionId, sub) {
+      const j = sub.toJSON();
+      must(await sb.rpc('save_push_subscription', { p_pension: pensionId, p_endpoint: j.endpoint, p_p256dh: j.keys.p256dh, p_auth: j.keys.auth }));
+    },
+    async deletePush(endpoint) {
+      must(await sb.rpc('delete_push_subscription', { p_endpoint: endpoint }));
+    },
+    /** Asks the server to send a test notification to this user's phones. */
+    async testPush() {
+      return must(await sb.functions.invoke('notify', { body: { test: true } }));
+    },
     /** Calls fn when another device saved. Returns unsubscribe. */
     subscribe(id, fn) {
       const ch = sb
