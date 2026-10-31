@@ -87,6 +87,37 @@ describe('app smoke', () => {
     expect(getState().settings.pricing.method).toBe('nightsLate');
   });
 
+  it('new lesson: dog first, address comes from the file, Waze follows the choice', () => {
+    render(<App />);
+    click(screen.getByText(/\+ אילוף/));
+    fireEvent.input(document.getElementById('dp-search'), { target: { value: 'טופ' } });
+    click(byText(/^טופי/));
+    expect(screen.getByText('הדקלים 14, רמת השרון')).toBeTruthy();
+    expect(screen.getByText('נווט בוויז').getAttribute('href')).toContain(encodeURIComponent('הדקלים 14'));
+    click(screen.getByText('כתובת אחרת'));
+    expect(screen.queryByText('נווט בוויז')).toBeNull();
+    fireEvent.input(document.getElementById('tr-addr'), { target: { value: 'פארק הירקון' } });
+    expect(screen.getByText('נווט בוויז').getAttribute('href')).toContain(encodeURIComponent('פארק הירקון'));
+    const before = getState().trainings.length;
+    click(screen.getByText('שמור'));
+    const saved = getState().trainings.at(-1);
+    expect(getState().trainings.length).toBe(before + 1);
+    expect(saved.address).toBe('פארק הירקון');
+  });
+
+  it('new lesson for a new dog opens a file with the address', () => {
+    render(<App />);
+    click(screen.getByText(/\+ אילוף/));
+    fireEvent.input(document.getElementById('dp-search'), { target: { value: 'בוני' } });
+    click(screen.getByText(/פתח תיק ל/));
+    fireEvent.input(document.getElementById('dp-owner'), { target: { value: 'דנה' } });
+    fireEvent.input(document.getElementById('dp-phone'), { target: { value: '0521234567' } });
+    fireEvent.input(document.getElementById('dp-address'), { target: { value: 'האלון 5, כפר סבא' } });
+    click(screen.getByText('פתח תיק ובחר'));
+    expect(screen.getByText('האלון 5, כפר סבא')).toBeTruthy();
+    expect(getState().dogs.some((d) => d.name === 'בוני')).toBe(true);
+  });
+
   it('paying from the dog sheet turns the stay blue', () => {
     render(<App />);
     const lola = getState().stays.find((x) => getState().dogs.find((d) => d.id === x.dogIds[0]).name === 'לולה');

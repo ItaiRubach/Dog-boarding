@@ -12,15 +12,26 @@ function emit() {
   subs.forEach((f) => f(state));
 }
 
+function saveNow() {
+  clearTimeout(saveTimer);
+  saveTimer = null;
+  try {
+    set(KEY, state).catch((e) => console.error('save failed', e));
+  } catch (e) {
+    console.error('save failed', e);
+  }
+}
+
 function persist() {
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => {
-    try {
-      set(KEY, state).catch((e) => console.error('save failed', e));
-    } catch (e) {
-      console.error('save failed', e);
-    }
-  }, 150);
+  saveTimer = setTimeout(saveNow, 150);
+}
+
+// iPhone may close the app right after a tap: save pending changes when it goes to the background
+if (typeof document !== 'undefined') {
+  const flush = () => saveTimer && saveNow();
+  document.addEventListener('visibilitychange', () => document.visibilityState === 'hidden' && flush());
+  addEventListener('pagehide', flush);
 }
 
 export async function loadState() {

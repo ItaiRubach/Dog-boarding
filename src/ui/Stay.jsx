@@ -37,7 +37,7 @@ export function Money({ draft, setDraft, settings }) {
             <option value="">+ מהמחירון</option>
             {settings.priceList.map((p) => <option value={p.id} key={p.id}>{p.label} · {money(p.price)}</option>)}
           </select>
-          <button class="textbtn" type="button" onClick={() => setDraft({ ...draft, charges: [...draft.charges, { id: uid(), itemId: null, label: 'חיוב חד-פעמי', qty: 1, unitPrice: 0 }] })}>+ חד-פעמי</button>
+          <button class="textbtn" style="white-space:nowrap" type="button" onClick={() => setDraft({ ...draft, charges: [...draft.charges, { id: uid(), itemId: null, label: 'חיוב חד-פעמי', qty: 1, unitPrice: 0 }] })}>+ חד-פעמי</button>
         </div>
         <div class="row static"><b class="grow">סה״כ</b><b class="num">{money(total(draft.charges))}</b></div>
       </div>

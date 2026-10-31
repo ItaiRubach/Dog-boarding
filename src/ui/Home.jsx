@@ -7,6 +7,7 @@ import { presentAt, freeUntil, isActive, effEnd, sameFamily } from '../logic/occ
 import { isPaid, balance } from '../logic/pricing.js';
 import { byId, dogNames, kennelName, stayPrimary } from '../model.js';
 import { telLink, waLink } from '../logic/messages.js';
+import { lessonAddress } from './Training.jsx';
 
 export function Home({ state }) {
   const ui = useUI();
@@ -116,7 +117,7 @@ export function Home({ state }) {
                     <span class="tm">{fmtTime(e.at)}</span>
                     <button type="button" class="tx" style="border:0;background:none;text-align:right;cursor:pointer;padding:0" onClick={() => ui.go('training', { id: e.tr.id })}>
                       אילוף · {byId(state.dogs, e.tr.dogId)?.name}
-                      <small>{e.tr.address || 'בלי כתובת'}</small>
+                      <small>{lessonAddress(state, e.tr) || 'בלי כתובת'}</small>
                     </button>
                     <span class="pill g">אילוף</span>
                   </div>
