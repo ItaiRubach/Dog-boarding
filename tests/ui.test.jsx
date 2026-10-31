@@ -67,6 +67,8 @@ describe('app smoke', () => {
     expect(screen.getByText(/נוהם כשניגשים לקערה/)).toBeTruthy();
     click(screen.getByText(/חזרה/));
     click(screen.getByText('היום'));
+    const showDone = screen.queryByText(/שכבר בוצעו/);
+    if (showDone) click(showDone);
     click(screen.getByText(/אילוף · ג׳ינג׳ר/));
     expect(screen.getByText('נווט בוויז').getAttribute('href')).toContain('waze.com/ul?q=');
     click(screen.getByText(/חזרה/));
