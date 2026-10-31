@@ -138,3 +138,24 @@ describe('messages', () => {
     for (const line of ics.split('\r\n')) expect(new TextEncoder().encode(line).length).toBeLessThanOrEqual(75);
   });
 });
+
+describe('invite link', () => {
+  it('round-trips the stay through the link and always puts the link in the message', async () => {
+    const { encodeInvite, decodeInvite, stayMessage } = await import('../src/logic/messages.js');
+    const inv = { i: 's1', t: 'טופי ושוקו', s: at(10, 8), e: at(13, 18), r: [7, 2] };
+    const hash = '#' + encodeInvite(inv);
+    expect(hash).toMatch(/^#[A-Za-z0-9_-]+$/);
+    expect(decodeInvite(hash)).toEqual(inv);
+    expect(decodeInvite('#garbage')).toBeNull();
+    const withTag = stayMessage('היי {בעלים}\n{קישור}', { dogNames: 'טופי', ownerName: 'רון', start: inv.s, end: inv.e, amount: 390, link: 'https://x/invite.html#abc' });
+    expect(withTag).toBe('היי רון\nhttps://x/invite.html#abc');
+    const noTag = stayMessage('היי {בעלים}', { dogNames: 'טופי', ownerName: 'רון', start: inv.s, end: inv.e, amount: 390, link: 'https://x/i#a' });
+    expect(noTag).toBe('היי רון\nלהוספה ליומן: https://x/i#a');
+  });
+
+  it('old saved text that promised an attachment is corrected', async () => {
+    const { migrate } = await import('../src/model.js');
+    const s = migrate({ settings: { messageTemplate: 'שלום\nמצרף קובץ להוספה ליומן.\nיובל' } });
+    expect(s.settings.messageTemplate).toBe('שלום\nלהוספה ליומן: {קישור}\nיובל');
+  });
+});

@@ -36,7 +36,10 @@ describe('app smoke', () => {
     click(screen.getByText('שמור'));
     if (screen.queryByText('אשר ושמור')) click(screen.getByText('אשר ושמור'));
     expect(getState().stays.length).toBe(before + 1);
-    expect(screen.getByText(/1 · שלח הודעה בוואטסאפ/)).toBeTruthy();
+    const wa = screen.getByText('שלח בוואטסאפ');
+    const msg = decodeURIComponent(wa.getAttribute('href').split('?text=')[1]);
+    expect(msg).toMatch(/להוספה ליומן: http.*invite.html#[A-Za-z0-9_-]+/);
+    expect(msg).not.toContain('מצרף קובץ');
   });
 
   it('putting a dog next to an alone-only dog needs the admin PIN', () => {

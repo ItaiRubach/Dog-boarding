@@ -19,7 +19,7 @@ export function defaultSettings() {
     ],
     adminPin: '1234',
     homeAddress: '',
-    messageTemplate: 'היי {בעלים}, {כלב} רשום/ה אצלי בפנסיון 🐾\nהגעה: {הגעה}\nאיסוף: {איסוף}\nסה״כ: ₪{סכום}\nמצרף קובץ להוספה ליומן.\nיובל',
+    messageTemplate: 'היי {בעלים}, {כלב} רשום/ה אצלי בפנסיון 🐾\nהגעה: {הגעה}\nאיסוף: {איסוף}\nסה״כ: ₪{סכום}\nלהוספה ליומן: {קישור}\nיובל',
     reminders: [7, 2],
   };
 }
@@ -53,11 +53,14 @@ export function defaultState() {
 
 export function migrate(s) {
   const base = defaultState();
-  return {
+  const out = {
     ...base,
     ...s,
     settings: { ...base.settings, ...s.settings, pricing: { ...base.settings.pricing, ...s.settings?.pricing } },
   };
+  // the first version promised an attached file, which WhatsApp cannot carry
+  out.settings.messageTemplate = out.settings.messageTemplate.replace('מצרף קובץ להוספה ליומן.', 'להוספה ליומן: {קישור}');
+  return out;
 }
 
 // ---- selectors ----

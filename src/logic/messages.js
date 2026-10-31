@@ -17,14 +17,39 @@ export function fillTemplate(template, vars) {
   return template.replace(/\{(.+?)\}/g, (m, k) => (k in vars ? vars[k] : m));
 }
 
-export function stayMessage(template, { dogNames, ownerName, start, end, amount }) {
-  return fillTemplate(template, {
+/** The calendar link always goes in, even if Yuval's template has no {קישור}. */
+export function stayMessage(template, { dogNames, ownerName, start, end, amount, link }) {
+  const text = fillTemplate(template, {
     כלב: dogNames,
     בעלים: ownerName,
     הגעה: fmtDateTime(start),
     איסוף: fmtDateTime(end),
     סכום: Math.round(amount).toLocaleString('he-IL'),
+    קישור: link || '',
   });
+  return link && !template.includes('{קישור}') ? `${text}\nלהוספה ליומן: ${link}` : text;
+}
+
+// ---- invite link: the event travels inside the link (#…), no server needed ----
+const b64url = (str) => btoa(String.fromCharCode(...new TextEncoder().encode(str))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const unb64url = (s) => new TextDecoder().decode(Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0)));
+
+export const encodeInvite = (inv) => b64url(JSON.stringify(inv));
+
+export function decodeInvite(hash) {
+  try {
+    const inv = JSON.parse(unb64url(hash.replace(/^#/, '')));
+    return inv && inv.s && inv.e && inv.t ? inv : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Google Calendar "add event" link (Google ignores reminders from links). */
+export function googleCalLink({ t, s, e, l }) {
+  const p = new URLSearchParams({ action: 'TEMPLATE', text: `${t} בפנסיון`, dates: `${utc(s)}/${utc(e)}`, details: `הגעה: ${fmtDateTime(s)}\nאיסוף: ${fmtDateTime(e)}` });
+  if (l) p.set('location', l);
+  return `https://calendar.google.com/calendar/render?${p}`;
 }
 
 // ---- .ics with two reminders ----

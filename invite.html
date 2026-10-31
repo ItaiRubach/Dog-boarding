@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>זימון לפנסיון</title>
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="./icon.svg" type="image/svg+xml">
+  <style>
+    :root { --bg: #f2f2f7; --card: #fff; --fg: #111; --mute: #6e6e73; --accent: #2f6b4f; --ink: #fff; --brand: #e9a93b; color-scheme: light; }
+    @media (prefers-color-scheme: dark) { :root { --bg: #000; --card: #1c1c1e; --fg: #f2f2f7; --mute: #98989f; --accent: #7cc39e; --ink: #0b1f15; color-scheme: dark; } }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font-family: -apple-system, "SF Pro Text", system-ui, Arial, sans-serif; font-size: 17px; line-height: 1.4;
+      padding: calc(env(safe-area-inset-top) + 28px) max(18px, env(safe-area-inset-right)) 40px max(18px, env(safe-area-inset-left)); }
+    main { max-width: 440px; margin: 0 auto; display: grid; gap: 14px; }
+    header { display: flex; align-items: center; gap: 12px; }
+    header img { width: 52px; height: 52px; border-radius: 12px; }
+    h1 { font-size: 24px; margin: 0; }
+    .sub { color: var(--mute); font-size: 14px; }
+    .card { background: var(--card); border-radius: 16px; padding: 4px 16px; }
+    .row { display: flex; justify-content: space-between; gap: 12px; padding: 12px 0; }
+    .row + .row { border-top: 1px solid var(--bg); }
+    .row span { color: var(--mute); }
+    .row b { text-align: left; }
+    a.btn { display: block; text-align: center; text-decoration: none; padding: 15px; border-radius: 14px; font-weight: 800; font-size: 17px; background: var(--accent); color: var(--ink); }
+    a.btn.ghost { background: var(--card); color: var(--accent); }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <img src="./apple-touch-icon.png" alt="">
+      <div><h1 id="title">זימון לפנסיון</h1><div class="sub">הפנסיון של יובל</div></div>
+    </header>
+    <div id="body" style="display:grid;gap:14px">
+      <div class="card">
+        <div class="row"><span>הגעה</span><b id="arrive"></b></div>
+        <div class="row"><span>איסוף</span><b id="pickup"></b></div>
+        <div class="row" id="locrow"><span>כתובת</span><b id="loc"></b></div>
+      </div>
+      <a class="btn" id="apple" href="#">הוסף ליומן (אייפון)</a>
+      <a class="btn ghost" id="google" href="#" target="_blank" rel="noopener">הוסף ל-Google Calendar</a>
+      <div class="sub" id="remind"></div>
+    </div>
+  </main>
+  <script type="module" src="/src/invite.js"></script>
+</body>
+</html>

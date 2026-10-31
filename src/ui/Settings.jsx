@@ -82,7 +82,7 @@ export function SetMessage({ state }) {
         <Field label="נוסח ההודעה">
           <textarea id="m-t" style="min-height:180px" value={s.messageTemplate} onInput={(e) => update((st) => { st.settings.messageTemplate = e.currentTarget.value; })} />
         </Field>
-        <div class="sub" style="color:var(--mute);font-size:13px;padding:0 4px">אפשר להשתמש ב: {'{כלב} {בעלים} {הגעה} {איסוף} {סכום}'}</div>
+        <div class="sub" style="color:var(--mute);font-size:13px;padding:0 4px">אפשר להשתמש ב: {'{כלב} {בעלים} {הגעה} {איסוף} {סכום} {קישור}'}. אם אין {'{קישור}'} בנוסח, הקישור ליומן יתווסף בסוף.</div>
         <div class="sec">תזכורות בזימון ליומן של הלקוח · לפני ההגעה</div>
         <div class="chips">
           {[14, 7, 3, 2, 1].map((d) => {
