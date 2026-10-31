@@ -1,0 +1,26 @@
+{
+  "name": "yuval-pension",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "vite build",
+    "preview": "vite preview --host",
+    "test": "vitest run",
+    "icons": "node scripts/make-icons.js"
+  },
+  "dependencies": {
+    "idb-keyval": "^6.2.1",
+    "preact": "^10.24.3"
+  },
+  "devDependencies": {
+    "@preact/preset-vite": "^2.9.1",
+    "@testing-library/preact": "^3.2.4",
+    "jsdom": "^25.0.1",
+    "playwright-core": "^1.48.2",
+    "sharp": "^0.33.5",
+    "vite": "^5.4.11",
+    "vitest": "^2.1.8"
+  }
+}
