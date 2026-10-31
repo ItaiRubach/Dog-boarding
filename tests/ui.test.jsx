@@ -36,7 +36,7 @@ describe('app smoke', () => {
     click(screen.getByText('שמור'));
     if (screen.queryByText('אשר ושמור')) click(screen.getByText('אשר ושמור'));
     expect(getState().stays.length).toBe(before + 1);
-    const wa = screen.getByText('שלח בוואטסאפ');
+    const wa = screen.getByText('שלח ללקוח בוואטסאפ');
     const msg = decodeURIComponent(wa.getAttribute('href').split('?text=')[1]);
     expect(msg).toMatch(/להוספה ליומן: http.*invite.html#[A-Za-z0-9_-]+/);
     expect(msg).not.toContain('מצרף קובץ');
@@ -103,6 +103,13 @@ describe('app smoke', () => {
     const saved = getState().trainings.at(-1);
     expect(getState().trainings.length).toBe(before + 1);
     expect(saved.address).toBe('פארק הירקון');
+    const wa = screen.getByText('שלח ללקוח בוואטסאפ');
+    const msg = decodeURIComponent(wa.getAttribute('href').split('?text=')[1]);
+    expect(msg).toContain('שיעור אילוף לטופי');
+    expect(msg).toContain('איפה: פארק הירקון');
+    const mine = screen.getByText('הוסף ליומן שלי').getAttribute('href');
+    expect(mine).toMatch(/invite\.html#/);
+    expect(msg).toContain(mine);
   });
 
   it('new lesson for a new dog opens a file with the address', () => {

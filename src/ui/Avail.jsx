@@ -127,7 +127,7 @@ export function Avail({ state, params }) {
       onSaved: () => {
         ui.toast('נשמר');
         ui.reset('home');
-        if (invite) ui.invite(stay.id);
+        if (invite) ui.invite({ kind: 'stay', id: stay.id });
       },
     });
   };

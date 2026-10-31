@@ -125,7 +125,7 @@ export function Stay({ state, params }) {
 
         {draft.approvals?.length > 0 && <div class="sub" style="color:var(--mute);font-size:13px;padding:0 4px">אושרו {draft.approvals.length} חריגות ({draft.approvals.some((a) => a.by === 'admin') ? 'כולל אישור מנהל' : 'אישור רגיל'}).</div>}
 
-        <button class="btn soft" type="button" onClick={() => save(() => ui.invite(draft.id))}>שמור ושלח זימון</button>
+        <button class="btn soft" type="button" onClick={() => save(() => ui.invite({ kind: 'stay', id: draft.id }))}>שמור ושלח זימון</button>
         {confirmCancel ? (
           <div class="btnrow">
             <button class="btn red" type="button" onClick={() => { update((s) => { byId(s.stays, draft.id).cancelled = !draft.cancelled; }); ui.toast(draft.cancelled ? 'השהייה שוחזרה' : 'השהייה בוטלה'); ui.back(); }}>כן, {draft.cancelled ? 'שחזר' : 'בטל שהייה'}</button>

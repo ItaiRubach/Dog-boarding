@@ -21,7 +21,7 @@ export function App() {
   const state = useStore();
   const [stack, setStack] = useState([{ name: 'home', params: {}, key: 0 }]);
   const [pending, setPending] = useState(null); // {stay, issues, opts}
-  const [inviteId, setInviteId] = useState(null);
+  const [invite, setInvite] = useState(null); // {kind: stay|lesson, id}
   const [toastMsg, setToastMsg] = useState('');
   const toastTimer = useRef();
   const keyRef = useRef(1);
@@ -48,7 +48,7 @@ export function App() {
         clearTimeout(toastTimer.current);
         toastTimer.current = setTimeout(() => setToastMsg(''), 2200);
       },
-      invite: (id) => setInviteId(id),
+      invite: (target) => setInvite(typeof target === 'string' ? { kind: 'stay', id: target } : target),
       /** Check occupancy rules; save directly or ask for confirmation / admin PIN. */
       saveStay: (stay, opts = {}) => {
         const st = getState();
@@ -89,7 +89,7 @@ export function App() {
           onApprove={(approvals) => commitStay(pending.stay, pending.opts, approvals)}
         />
       )}
-      {inviteId && <InviteSheet state={state} stayId={inviteId} onClose={() => setInviteId(null)} />}
+      {invite && <InviteSheet state={state} target={invite} onClose={() => setInvite(null)} />}
       {toastMsg && <div class="toast" role="status">{toastMsg}</div>}
     </UI.Provider>
   );

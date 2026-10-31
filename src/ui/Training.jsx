@@ -26,12 +26,13 @@ export function Training({ state, params }) {
   });
   const [picking, setPicking] = useState(!existing);
   const [confirmDel, setConfirmDel] = useState(false);
+  const [sendInvite, setSendInvite] = useState(!existing);
   const set = (patch) => setDraft({ ...draft, ...patch });
   const dog = byId(state.dogs, draft.dogId);
   const contact = primaryContact(state, dog);
   const address = lessonAddress(state, draft);
 
-  const save = () => {
+  const save = (invite = sendInvite) => {
     if (!draft.dogId) return ui.toast('בחר כלב');
     if (draft.end <= draft.start) return ui.toast('הסיום לפני ההתחלה');
     const saved = { ...draft, address };
@@ -42,6 +43,7 @@ export function Training({ state, params }) {
     });
     ui.toast('נשמר');
     ui.back();
+    if (invite) ui.invite({ kind: 'lesson', id: saved.id });
   };
 
   if (picking) {
@@ -57,7 +59,7 @@ export function Training({ state, params }) {
 
   return (
     <>
-      <Top title="שיעור אילוף" back right={<button class="textbtn" type="button" onClick={save}>שמור</button>} />
+      <Top title="שיעור אילוף" back right={<button class="textbtn" type="button" onClick={() => save()}>שמור</button>} />
       <main class="main">
         <div class="list">
           <div class="row static">
@@ -107,6 +109,11 @@ export function Training({ state, params }) {
         </div>
         <Money draft={draft} setDraft={setDraft} settings={state.settings} />
         <Field label="הערות"><textarea id="tr-notes" value={draft.notes} onInput={(e) => set({ notes: e.currentTarget.value })} /></Field>
+        {existing ? (
+          <button class="btn soft" type="button" onClick={() => save(true)}>שמור ושלח זימון</button>
+        ) : (
+          <label class="check"><span>לשלוח זימון ללקוח וליומן שלי אחרי השמירה</span><input id="tr-invite" type="checkbox" checked={sendInvite} onChange={(e) => setSendInvite(e.currentTarget.checked)} /></label>
+        )}
         {existing && (confirmDel ? (
           <div class="btnrow">
             <button class="btn red" type="button" onClick={() => { update((s) => { s.trainings = s.trainings.filter((t) => t.id !== draft.id); }); ui.toast('נמחק'); ui.back(); }}>כן, מחק</button>

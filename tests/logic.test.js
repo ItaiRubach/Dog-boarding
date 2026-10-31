@@ -159,3 +159,17 @@ describe('invite link', () => {
     expect(s.settings.messageTemplate).toBe('שלום\nלהוספה ליומן: {קישור}\nיובל');
   });
 });
+
+describe('lesson invite', () => {
+  it('lesson event has its own title and minute reminders', async () => {
+    const { buildEventIcs, lessonMessage, decodeInvite, encodeInvite, inviteAlarms } = await import('../src/logic/messages.js');
+    const ics = buildEventIcs({ id: 't1', kind: 'lesson', dogNames: 'ג׳ינג׳ר', start: at(10, 16), end: at(10, 17), location: 'הגפן 3', alarms: [1440, 60], now: at(1, 0) });
+    expect(ics).toContain('SUMMARY:שיעור אילוף · ג׳ינג׳ר');
+    expect(ics.match(/TRIGGER:[^\r]+/g)).toEqual(['TRIGGER:-P1D', 'TRIGGER:-PT60M']);
+    expect(ics).toContain('LOCATION:הגפן 3');
+    const msg = lessonMessage('היי {בעלים}\n{מתי}\n{כתובת}', { dogNames: 'ג׳ינג׳ר', ownerName: 'דנה', start: at(10, 16), end: at(10, 17), address: 'הגפן 3', amount: 250, link: 'https://x/invite.html#a' });
+    expect(msg).toBe('היי דנה\nשלישי, 10.11 16:00–17:00\nהגפן 3\nלהוספה ליומן: https://x/invite.html#a');
+    expect(inviteAlarms(decodeInvite('#' + encodeInvite({ k: 'lesson', t: 'x', s: 1, e: 2, m: [60] })))).toEqual([60]);
+    expect(inviteAlarms({ r: [7] })).toEqual([10080]);
+  });
+});

@@ -1,4 +1,4 @@
-import { fmtDateTime } from './util.js';
+import { fmtDateTime, fmtDayLong, fmtTime } from './util.js';
 
 /** Israeli phone → digits for wa.me (05x… → 9725x…). */
 export function waNumber(phone = '') {
@@ -18,6 +18,8 @@ export function fillTemplate(template, vars) {
 }
 
 /** The calendar link always goes in, even if Yuval's template has no {קישור}. */
+const withLink = (template, text, link) => (link && !template.includes('{קישור}') ? `${text}\nלהוספה ליומן: ${link}` : text);
+
 export function stayMessage(template, { dogNames, ownerName, start, end, amount, link }) {
   const text = fillTemplate(template, {
     כלב: dogNames,
@@ -27,8 +29,36 @@ export function stayMessage(template, { dogNames, ownerName, start, end, amount,
     סכום: Math.round(amount).toLocaleString('he-IL'),
     קישור: link || '',
   });
-  return link && !template.includes('{קישור}') ? `${text}\nלהוספה ליומן: ${link}` : text;
+  return withLink(template, text, link);
 }
+
+/** Lesson text: {כלב} {בעלים} {מתי} {כתובת} {סכום} {קישור}. */
+export function lessonMessage(template, { dogNames, ownerName, start, end, address, amount, link }) {
+  const text = fillTemplate(template, {
+    כלב: dogNames,
+    בעלים: ownerName,
+    מתי: `${fmtDayLong(start)} ${fmtTime(start)}–${fmtTime(end)}`,
+    כתובת: address || '',
+    סכום: Math.round(amount).toLocaleString('he-IL'),
+    קישור: link || '',
+  });
+  return withLink(template, text, link);
+}
+
+// ---- one calendar event, for a stay (k: 'stay') or a lesson (k: 'lesson') ----
+export const eventTitle = ({ k, t }) => (k === 'lesson' ? `שיעור אילוף · ${t}` : `${t} בפנסיון`);
+export const eventLabels = (k) => (k === 'lesson' ? ['התחלה', 'סיום'] : ['הגעה', 'איסוף']);
+
+/** Reminder lead times are kept in minutes. */
+export function leadText(min) {
+  if (min % 1440 === 0) {
+    const d = min / 1440;
+    return d === 1 ? 'יום' : d === 2 ? 'יומיים' : d === 7 ? 'שבוע' : d === 14 ? 'שבועיים' : `${d} ימים`;
+  }
+  if (min % 60 === 0) return min === 60 ? 'שעה' : min === 120 ? 'שעתיים' : `${min / 60} שעות`;
+  return `${min} דקות`;
+}
+export const daysToMinutes = (days = []) => days.map((d) => d * 1440);
 
 // ---- invite link: the event travels inside the link (#…), no server needed ----
 const b64url = (str) => btoa(String.fromCharCode(...new TextEncoder().encode(str))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
@@ -45,14 +75,18 @@ export function decodeInvite(hash) {
   }
 }
 
+/** Alarm minutes of an invite: lessons carry minutes (m), stays carry days (r). */
+export const inviteAlarms = (inv) => inv.m || daysToMinutes(inv.r || []);
+
 /** Google Calendar "add event" link (Google ignores reminders from links). */
-export function googleCalLink({ t, s, e, l }) {
-  const p = new URLSearchParams({ action: 'TEMPLATE', text: `${t} בפנסיון`, dates: `${utc(s)}/${utc(e)}`, details: `הגעה: ${fmtDateTime(s)}\nאיסוף: ${fmtDateTime(e)}` });
+export function googleCalLink({ k, t, s, e, l }) {
+  const [a, b] = eventLabels(k);
+  const p = new URLSearchParams({ action: 'TEMPLATE', text: eventTitle({ k, t }), dates: `${utc(s)}/${utc(e)}`, details: `${a}: ${fmtDateTime(s)}\n${b}: ${fmtDateTime(e)}` });
   if (l) p.set('location', l);
   return `https://calendar.google.com/calendar/render?${p}`;
 }
 
-// ---- .ics with two reminders ----
+// ---- .ics ----
 const utc = (ms) => new Date(ms).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
 const esc = (s) => String(s).replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n');
 
@@ -74,12 +108,13 @@ function fold(line) {
 }
 
 /**
- * One event from arrival to pickup, with the reminders set in settings
- * (days before the arrival). Same UID on resend, so the client's calendar
- * updates the event instead of duplicating it.
+ * One event from start to end, with the reminders set in settings
+ * (alarms = minutes before the start). Same UID on resend, so the client's
+ * calendar updates the event instead of duplicating it.
  */
-export function buildStayIcs({ id, dogNames, start, end, location, reminders = [7, 2], now = Date.now() }) {
-  const title = `${dogNames} בפנסיון`;
+export function buildEventIcs({ id, kind = 'stay', dogNames, start, end, location, alarms = [10080, 2880], now = Date.now() }) {
+  const title = eventTitle({ k: kind, t: dogNames });
+  const [a, b] = eventLabels(kind);
   const lines = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
@@ -92,12 +127,16 @@ export function buildStayIcs({ id, dogNames, start, end, location, reminders = [
     `DTSTART:${utc(start)}`,
     `DTEND:${utc(end)}`,
     `SUMMARY:${esc(title)}`,
-    `DESCRIPTION:${esc(`הגעה: ${fmtDateTime(start)}\nאיסוף: ${fmtDateTime(end)}`)}`,
+    `DESCRIPTION:${esc(`${a}: ${fmtDateTime(start)}\n${b}: ${fmtDateTime(end)}`)}`,
   ];
   if (location) lines.push(`LOCATION:${esc(location)}`);
-  for (const d of reminders) {
-    lines.push('BEGIN:VALARM', `TRIGGER:-P${d}D`, 'ACTION:DISPLAY', `DESCRIPTION:${esc(`${title} בעוד ${d === 1 ? 'יום' : d === 2 ? 'יומיים' : `${d} ימים`}`)}`, 'END:VALARM');
+  for (const m of alarms) {
+    const trigger = m % 1440 === 0 ? `-P${m / 1440}D` : `-PT${m}M`;
+    lines.push('BEGIN:VALARM', `TRIGGER:${trigger}`, 'ACTION:DISPLAY', `DESCRIPTION:${esc(`${title} בעוד ${leadText(m)}`)}`, 'END:VALARM');
   }
   lines.push('END:VEVENT', 'END:VCALENDAR');
   return lines.map(fold).join('\r\n') + '\r\n';
 }
+
+/** Stays keep their reminders in days. */
+export const buildStayIcs = ({ reminders = [7, 2], ...rest }) => buildEventIcs({ ...rest, kind: 'stay', alarms: daysToMinutes(reminders) });

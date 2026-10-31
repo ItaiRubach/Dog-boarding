@@ -21,6 +21,8 @@ export function defaultSettings() {
     homeAddress: '',
     messageTemplate: 'היי {בעלים}, {כלב} רשום/ה אצלי בפנסיון 🐾\nהגעה: {הגעה}\nאיסוף: {איסוף}\nסה״כ: ₪{סכום}\nלהוספה ליומן: {קישור}\nיובל',
     reminders: [7, 2],
+    lessonTemplate: 'היי {בעלים}, נקבע שיעור אילוף ל{כלב} 🐾\nמתי: {מתי}\nאיפה: {כתובת}\nלהוספה ליומן: {קישור}\nיובל',
+    lessonReminders: [1440],
   };
 }
 

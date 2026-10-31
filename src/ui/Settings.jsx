@@ -5,6 +5,7 @@ import { update, replaceState } from '../store.js';
 import { uid, money, dateKey } from '../logic/util.js';
 import { isActive } from '../logic/occupancy.js';
 import { byId, defaultState, seedDemo } from '../model.js';
+import { leadText } from '../logic/messages.js';
 
 const METHODS = { nights: 'לפי לילות', days: 'לפי ימים בלוח', nightsLate: 'לילות + איסוף מאוחר' };
 
@@ -33,7 +34,7 @@ export function Settings({ state }) {
         </div>
         <div class="sec">לקוחות</div>
         <div class="list">
-          {row('נוסח הודעת זימון ותזכורות', `${s.reminders.join(' ו-')} ימים לפני`, 'set-message')}
+          {row('הודעות זימון ותזכורות', 'פנסיון ואילוף', 'set-message')}
         </div>
         <div class="sec">מערכת</div>
         <div class="list">
@@ -79,6 +80,7 @@ export function SetMessage({ state }) {
     <>
       <Top title="הודעת זימון" back />
       <main class="main">
+        <div class="sec">פנסיון</div>
         <Field label="נוסח ההודעה">
           <textarea id="m-t" style="min-height:180px" value={s.messageTemplate} onInput={(e) => update((st) => { st.settings.messageTemplate = e.currentTarget.value; })} />
         </Field>
@@ -98,6 +100,27 @@ export function SetMessage({ state }) {
           })}
         </div>
         <div class="sub" style="color:var(--mute);font-size:13px;padding:0 4px">{s.reminders.length ? 'הזימון הוא אירוע אחד מההגעה עד האיסוף, עם התזכורות שנבחרו.' : 'בלי תזכורות. הזימון יגיע בלי התראה.'}</div>
+
+        <div class="sec" style="margin-top:14px">שיעור אילוף</div>
+        <Field label="נוסח ההודעה">
+          <textarea id="m-lt" style="min-height:150px" value={s.lessonTemplate} onInput={(e) => update((st) => { st.settings.lessonTemplate = e.currentTarget.value; })} />
+        </Field>
+        <div class="sub" style="color:var(--mute);font-size:13px;padding:0 4px">אפשר להשתמש ב: {'{כלב} {בעלים} {מתי} {כתובת} {סכום} {קישור}'}</div>
+        <div class="sec">תזכורות לשיעור · לפני ההתחלה</div>
+        <div class="chips">
+          {[2880, 1440, 180, 60].map((m) => {
+            const on = s.lessonReminders.includes(m);
+            return (
+              <button type="button" class="chip" key={m} aria-pressed={String(on)} onClick={() => update((st) => {
+                const r = on ? st.settings.lessonReminders.filter((x) => x !== m) : [...st.settings.lessonReminders, m];
+                st.settings.lessonReminders = r.sort((a, b) => b - a);
+              })}>
+                {leadText(m)}
+              </button>
+            );
+          })}
+        </div>
+        <div class="sub" style="color:var(--mute);font-size:13px;padding:0 4px">אותן תזכורות נכנסות גם ליומן של הלקוח וגם ליומן שלך.</div>
       </main>
     </>
   );

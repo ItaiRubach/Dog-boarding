@@ -1,37 +1,47 @@
 import { Sheet } from './common.jsx';
-import { byId, dogNames, stayPrimary } from '../model.js';
-import { buildStayIcs, stayMessage, waLink, encodeInvite } from '../logic/messages.js';
+import { byId, dogNames, stayPrimary, primaryContact } from '../model.js';
+import { buildEventIcs, stayMessage, lessonMessage, waLink, encodeInvite, daysToMinutes, leadText } from '../logic/messages.js';
 import { total } from '../logic/pricing.js';
+import { lessonAddress } from './Training.jsx';
 
-/** Link the client opens to add the stay to their own calendar. */
-export function inviteLink(state, stay) {
-  const inv = { i: stay.id, t: dogNames(state, stay.dogIds), s: stay.start, e: stay.end, r: state.settings.reminders, l: state.settings.homeAddress || undefined };
-  return new URL('invite.html', location.href).href.split('#')[0] + '#' + encodeInvite(inv);
+/** Everything an invite needs, for a stay or a lesson. */
+export function inviteData(state, { kind, id }) {
+  const set = state.settings;
+  if (kind === 'lesson') {
+    const tr = byId(state.trainings, id);
+    if (!tr) return null;
+    const dog = byId(state.dogs, tr.dogId);
+    const address = lessonAddress(state, tr);
+    const inv = { k: 'lesson', i: tr.id, t: dog?.name || '', s: tr.start, e: tr.end, m: set.lessonReminders, l: address || undefined };
+    const link = inviteUrl(inv);
+    const contact = primaryContact(state, dog);
+    const text = lessonMessage(set.lessonTemplate, { dogNames: inv.t, ownerName: contact?.name || '', start: tr.start, end: tr.end, address, amount: total(tr.charges), link });
+    return { inv, link, contact, text, alarms: set.lessonReminders };
+  }
+  const stay = byId(state.stays, id);
+  if (!stay) return null;
+  const inv = { k: 'stay', i: stay.id, t: dogNames(state, stay.dogIds), s: stay.start, e: stay.end, r: set.reminders, l: set.homeAddress || undefined };
+  const link = inviteUrl(inv);
+  const contact = stayPrimary(state, stay);
+  const text = stayMessage(set.messageTemplate, { dogNames: inv.t, ownerName: contact?.name || '', start: stay.start, end: stay.end, amount: total(stay.charges), link });
+  return { inv, link, contact, text, alarms: daysToMinutes(set.reminders) };
 }
 
-/** WhatsApp text with the calendar link; the .ics file stays as a fallback. */
-export function InviteSheet({ state, stayId, onClose }) {
-  const stay = byId(state.stays, stayId);
-  if (!stay) return null;
-  const contact = stayPrimary(state, stay);
-  const names = dogNames(state, stay.dogIds);
-  const link = inviteLink(state, stay);
-  const text = stayMessage(state.settings.messageTemplate, {
-    dogNames: names,
-    ownerName: contact?.name || '',
-    start: stay.start,
-    end: stay.end,
-    amount: total(stay.charges),
-    link,
-  });
+const inviteUrl = (inv) => new URL('invite.html', location.href).href.split('#')[0] + '#' + encodeInvite(inv);
+
+/** WhatsApp to the client + the same event into Yuval's own calendar. */
+export function InviteSheet({ state, target, onClose }) {
+  const data = inviteData(state, target);
+  if (!data) return null;
+  const { inv, link, contact, text, alarms } = data;
   const local = /^(localhost|127\.|192\.168\.|10\.)/.test(location.hostname);
 
   const shareIcs = async () => {
-    const ics = buildStayIcs({ id: stay.id, dogNames: names, start: stay.start, end: stay.end, location: state.settings.homeAddress, reminders: state.settings.reminders });
-    const file = new File([ics], `${names}-פנסיון.ics`, { type: 'text/calendar' });
+    const ics = buildEventIcs({ id: inv.i, kind: inv.k, dogNames: inv.t, start: inv.s, end: inv.e, location: inv.l, alarms });
+    const file = new File([ics], `${inv.t}.ics`, { type: 'text/calendar' });
     try {
       if (navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ files: [file], title: `${names} בפנסיון` });
+        await navigator.share({ files: [file], title: inv.t });
         return;
       }
     } catch (e) {
@@ -47,18 +57,21 @@ export function InviteSheet({ state, stayId, onClose }) {
 
   return (
     <Sheet onClose={onClose} label="שליחת זימון">
-      <h2>זימון ל{contact?.name || 'בעלים'}</h2>
+      <h2>{inv.k === 'lesson' ? 'זימון לשיעור' : 'זימון לפנסיון'} · {contact?.name || inv.t}</h2>
       {!contact?.phone && <div class="issue block">אין טלפון לבעלים. הוסף טלפון בתיק הכלב.</div>}
-      {local && <div class="issue">האפליקציה רצה כרגע מהמחשב בבית, אז הקישור בהודעה ייפתח רק ברשת הביתית. אחרי ההעלאה לאינטרנט הוא יעבוד אצל כל לקוח.</div>}
-      <div class="field" style="white-space:pre-wrap;font-size:14px;word-break:break-all">{text}</div>
+      {local && <div class="issue">האפליקציה רצה כרגע מהמחשב בבית, אז הקישור ייפתח רק ברשת הביתית. אחרי ההעלאה לאינטרנט הוא יעבוד בכל מקום.</div>}
+      <div class="field" style="white-space:pre-wrap;font-size:14px">{text.replace(link, '🔗 קישור ליומן')}</div>
       <a class="btn" style="text-align:center;text-decoration:none" href={contact?.phone ? waLink(contact.phone, text) : undefined} target="_blank" rel="noopener">
-        שלח בוואטסאפ
+        שלח ללקוח בוואטסאפ
+      </a>
+      <a class="btn soft" style="text-align:center;text-decoration:none" href={link} target="_blank" rel="noopener">
+        הוסף ליומן שלי
       </a>
       <div class="sub" style="color:var(--mute);font-size:13px;padding:0 4px">
-        הלקוח לוחץ על הקישור ומוסיף ליומן אירוע אחד מההגעה עד האיסוף, עם תזכורת {state.settings.reminders.join(' ו-')} ימים לפני.
+        אירוע אחד מ{inv.k === 'lesson' ? 'ההתחלה עד הסיום' : 'ההגעה עד האיסוף'}{alarms.length ? `, עם תזכורת ${alarms.map(leadText).join(' ו')} לפני` : ', בלי תזכורת'}. משנים בהגדרות.
       </div>
       <button class="btn ghost" type="button" onClick={shareIcs}>
-        או שתף קובץ יומן במקום קישור
+        או שתף קובץ יומן
       </button>
       <button class="btn ghost" type="button" onClick={onClose}>
         סגור
