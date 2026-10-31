@@ -22,7 +22,7 @@ await p.screenshot({ path: `${out}/14-lesson-invite.png` });
 const href = await p.getByText('הוסף ליומן שלי').getAttribute('href');
 const page2 = await ctx.newPage();
 page2.on('pageerror', (e) => errors.push(e.message));
-await page2.goto(href.replace(/^https?:\/\/[^/]+\//, url));
+await page2.goto(href.startsWith(url) ? href : href.replace(/^https?:\/\/[^/]+\//, url));
 await page2.waitForTimeout(300);
 await page2.screenshot({ path: `${out}/15-lesson-calendar.png` });
 const ics = decodeURIComponent((await page2.getAttribute('#apple', 'href')).split(',')[1]);
