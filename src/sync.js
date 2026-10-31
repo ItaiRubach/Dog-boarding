@@ -135,8 +135,8 @@ export async function pushNow() {
 }
 
 // ---- account ----
-export async function signIn(email, password) {
-  await cloud.signIn(email.trim(), password);
+/** After any successful login: a phone that belongs to exactly one pension connects by itself. */
+async function afterLogin() {
   session = await cloud.session();
   const list = await cloud.myPensions();
   if (list.length === 1) {
@@ -145,7 +145,17 @@ export async function signIn(email, password) {
   } else setStatus('nopension');
 }
 
-export const signUp = (email, password) => cloud.signUp(email.trim(), password);
+export async function signIn(email, password) {
+  await cloud.signIn(email.trim(), password);
+  await afterLogin();
+}
+
+/** Sign-up logs in right away (no confirmation email), so it continues like a login. */
+export async function signUp(email, password) {
+  const r = await cloud.signUp(email.trim(), password);
+  if (r?.session) await afterLogin();
+  return r;
+}
 export const resetPassword = (email) => cloud.resetPassword(email.trim());
 
 /** Yuval's first login: the data already on the phone becomes the shared pension. */

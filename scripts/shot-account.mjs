@@ -1,0 +1,26 @@
+// Signs up a throwaway user in the real app UI, uploads demo data, and screenshots the account screen.
+import { chromium } from 'playwright-core';
+const [url, out] = process.argv.slice(2);
+const b = await chromium.launch({ channel: 'msedge' });
+const p = await b.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
+const errors = [];
+p.on('pageerror', (e) => errors.push(e.message));
+await p.goto(url);
+await p.getByLabel('הגדרות').click();
+await p.getByText('גיבוי, שחזור ונתוני דוגמה').click();
+await p.getByText('טען נתוני דוגמה').click();
+await p.getByText('כן, החלף הכל בדוגמה').click();
+await p.getByRole('button', { name: /חזרה/ }).click();
+await p.getByText('ענן וסנכרון').click();
+await p.getByText('משתמש חדש').click();
+await p.locator('#ac-email').fill(`e2e-ui-${Date.now().toString(36)}@example.com`);
+await p.locator('#ac-pw').fill('e2e-ui-password');
+await p.getByRole('button', { name: 'הרשמה' }).click();
+await p.waitForTimeout(2500);
+await p.screenshot({ path: `${out}/16-account-new.png` });
+await p.getByRole('button', { name: /העלה את הנתונים/ }).click();
+await p.waitForTimeout(2500);
+await p.screenshot({ path: `${out}/17-account-synced.png` });
+console.log('status text:', await p.locator('.top .sub').first().textContent());
+console.log('errors:', errors.length ? errors.join('\n') : 'none');
+await b.close();

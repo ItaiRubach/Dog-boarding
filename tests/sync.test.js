@@ -9,7 +9,7 @@ function fakeCloud(world) {
     onAuth() {},
     signIn: async (email) => { session = { user: { id: email, email } }; },
     signOut: async () => { session = null; },
-    signUp: async () => ({}),
+    signUp: async (email) => { session = { user: { id: email, email } }; return { session }; },
     resetPassword: async () => {},
     myPensions: async () => Object.values(world.rows).filter((r) => r.members.includes(session.user.id)).map(clone),
     fetch: async (id) => { if (world.offline) throw new Error('fetch failed'); return clone(world.rows[id]); },
@@ -99,6 +99,13 @@ describe('cloud sync', () => {
     await tick();
     await tick();
     expect(store.getState().dogs.map((d) => d.name)).toEqual(['טופי', 'לולה']);
+  });
+
+  it('sign-up continues straight to choosing a pension', async () => {
+    const { sync } = await phone();
+    await sync.initSync(fakeCloud(world));
+    await sync.signUp('new@x', 'secret1');
+    expect(sync.getSync()).toMatchObject({ status: 'nopension', email: 'new@x' });
   });
 
   it('a phone that already belongs to one pension connects by itself at login', async () => {
