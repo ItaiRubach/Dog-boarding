@@ -68,6 +68,15 @@ describe('checkStay', () => {
     expect(checkStay(s2, ctx([s1], dogs))).toEqual([]);
   });
 
+  it('a dog that arrived early is already in the kennel; a late dog keeps it reserved', () => {
+    const early = stay('a', 'k1', ['nela'], at(3, 12), at(5, 8), { arrivedAt: at(3, 9) });
+    expect(presentAt('k1', at(3, 10), [early])).toHaveLength(1);
+    const issues = checkStay(stay('b', 'k1', ['mika'], at(1, 8), at(3, 11)), ctx([early], dogs));
+    expect(issues.map((i) => i.type)).toEqual(['overlap']);
+    const late = stay('c', 'k1', ['nela'], at(3, 12), at(5, 8));
+    expect(presentAt('k1', at(3, 13), [late])).toHaveLength(1);
+  });
+
   it('cancelled stays do not count', () => {
     const s1 = stay('a', 'k1', ['nela'], at(1, 8), at(5, 8), { cancelled: true });
     expect(checkStay(stay('b', 'k1', ['mika'], at(2, 8), at(3, 8)), ctx([s1], dogs))).toEqual([]);
@@ -119,12 +128,13 @@ describe('messages', () => {
     expect(waNumber('+972 54 1234567')).toBe('972541234567');
   });
 
-  it('ics has two events with 7 and 2 day alarms', () => {
-    const ics = buildStayIcs({ id: 's1', dogNames: 'טופי', start: at(1, 8), end: at(3, 18), now: at(1, 0) });
-    expect(ics.match(/BEGIN:VEVENT/g)).toHaveLength(2);
-    expect(ics.match(/TRIGGER:-P7D/g)).toHaveLength(2);
-    expect(ics.match(/TRIGGER:-P2D/g)).toHaveLength(2);
-    expect(ics).toContain('UID:s1-in@yuval-pension');
+  it('ics is one event from arrival to pickup with the reminders from settings', () => {
+    const ics = buildStayIcs({ id: 's1', dogNames: 'טופי', start: at(1, 8), end: at(3, 18), reminders: [10, 3, 1], now: at(1, 0) });
+    expect(ics.match(/BEGIN:VEVENT/g)).toHaveLength(1);
+    expect(ics).toContain(`DTSTART:${new Date(at(1, 8)).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')}`);
+    expect(ics).toContain(`DTEND:${new Date(at(3, 18)).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')}`);
+    expect(ics.match(/TRIGGER:-P\d+D/g)).toEqual(['TRIGGER:-P10D', 'TRIGGER:-P3D', 'TRIGGER:-P1D']);
+    expect(ics).toContain('UID:s1@yuval-pension');
     for (const line of ics.split('\r\n')) expect(new TextEncoder().encode(line).length).toBeLessThanOrEqual(75);
   });
 });

@@ -1,30 +1,44 @@
 import { useMemo, useState } from 'preact/hooks';
 import { Top, Field, useUI } from './common.jsx';
 import { FloorPlan } from './FloorPlan.jsx';
-import { update } from '../store.js';
-import { addDays, dateKey, dayStart, fmtDateTime, fmtDay, toMs, uid, money } from '../logic/util.js';
+import { RangeCalendar } from './RangeCalendar.jsx';
+import { dateKey, dayStart, fmtDateTime, fmtDay, toMs, uid, money } from '../logic/util.js';
 import { rankKennels } from '../logic/occupancy.js';
-import { autoCharges, total } from '../logic/pricing.js';
+import { autoCharges, total, nightsBetween } from '../logic/pricing.js';
 import { byId, ownersLabel } from '../model.js';
 
 const STATUS = { free: 'פנוי', partial: 'חפיפה / שיתוף', full: 'תפוס' };
+
+/** Search ignores spaces, dashes, geresh and quotes, so "0541234567" finds "054-123 4567". */
+export const norm = (s = '') => s.replace(/[\s\-׳'"״.()]/g, '').toLowerCase();
+
+export function searchDogs(state, q) {
+  const n = norm(q);
+  if (!n) return [];
+  return state.dogs
+    .map((d) => {
+      const contacts = d.contacts.map((l) => byId(state.contacts, l.contactId)).filter(Boolean);
+      let score = 0;
+      if (norm(d.name).startsWith(n)) score = 4;
+      else if (norm(d.name).includes(n)) score = 3;
+      else if (contacts.some((c) => norm(c.name).includes(n))) score = 2;
+      else if (contacts.some((c) => norm(c.phone).includes(n.replace(/^\+?972/, '0')))) score = 2;
+      else if (norm(d.breed).includes(n)) score = 1;
+      return { d, score };
+    })
+    .filter((x) => x.score)
+    .sort((a, b) => b.score - a.score || a.d.name.localeCompare(b.d.name, 'he'))
+    .map((x) => x.d);
+}
 
 /** "Is there room?" → pick dates → see free kennels → pick dog → save. */
 export function Avail({ state, params }) {
   const ui = useUI();
   const { times } = state.settings;
   const today = dayStart(Date.now());
-  // first fixed time that is still ahead today, otherwise tomorrow morning
-  const [first] = useState(() => {
-    const date = params?.date || dateKey(today);
-    if (date !== dateKey(today)) return { date, time: times.morning };
-    const ahead = [times.morning, times.noon, times.evening].find((t) => toMs(date, t) > Date.now() + 30 * 60000);
-    return ahead ? { date, time: ahead } : { date: dateKey(addDays(today, 1)), time: times.morning };
-  });
-  const [sDate, setSDate] = useState(first.date);
-  const [sTime, setSTime] = useState(first.time);
-  const [nights, setNights] = useState(3);
-  const [eDate, setEDate] = useState(null); // null = start + nights
+  const [sDate, setSDate] = useState(params?.date && params.date > dateKey(today) ? params.date : null);
+  const [eDate, setEDate] = useState(null);
+  const [sTime, setSTime] = useState(times.morning);
   const [eTime, setETime] = useState(times.morning);
   const [count, setCount] = useState(1);
   const [kennelId, setKennelId] = useState(null);
@@ -34,49 +48,61 @@ export function Avail({ state, params }) {
   const [newDog, setNewDog] = useState(null);
   const [invite, setInvite] = useState(true);
 
-  const start = toMs(sDate, sTime);
-  const endDate = eDate || dateKey(addDays(toMs(sDate, '00:00'), nights));
-  const end = toMs(endDate, eTime);
-  const valid = end > start;
-  const ranked = useMemo(() => (valid ? rankKennels(start, end, count, state) : []), [start, end, count, state]);
+  const start = sDate ? toMs(sDate, sTime) : 0;
+  const end = eDate ? toMs(eDate, eTime) : 0;
+  const picked = !!(sDate && eDate);
+  const valid = picked && end > start;
+  const ranked = useMemo(() => (valid ? rankKennels(start, end, count, state) : []), [start, end, count, state, valid]);
   const byKennel = Object.fromEntries(ranked.map((r) => [r.kennel.id, r]));
   const freeCount = ranked.filter((r) => r.status === 'free').length;
   const best = ranked[0];
   const chosen = kennelId && byKennel[kennelId] ? byKennel[kennelId] : best;
 
-  const quickDates = [0, 1, 2].map((d) => dateKey(addDays(today, d)));
-  if (!quickDates.includes(sDate)) quickDates.push(sDate);
-  const timeChips = (val, set) => (
-    <div class="chips">
-      {[['morning', 'בוקר'], ['noon', 'צהריים'], ['evening', 'ערב']].map(([k, label]) => (
+  const timeChips = (val, set, label) => (
+    <div class="timerow">
+      <span>{label}</span>
+      {[['morning', 'בוקר'], ['noon', 'צהריים'], ['evening', 'ערב']].map(([k, l]) => (
         <button type="button" class="chip" key={k} aria-pressed={String(val === times[k])} onClick={() => set(times[k])}>
-          {label} {times[k]}
+          {l}
         </button>
       ))}
-      <input type="time" value={val} onInput={(e) => set(e.currentTarget.value)} class="chip" aria-label="שעה אחרת" style="width:auto" />
+      <input type="time" value={val} onInput={(e) => e.currentTarget.value && set(e.currentTarget.value)} class="chip" aria-label={label + ' שעה מדויקת'} />
     </div>
   );
 
   // ---- step 2: dogs ----
   const recent = useMemo(() => {
-    const seen = new Set();
     const out = [];
     for (const s of [...state.stays].sort((a, b) => b.start - a.start)) {
-      for (const id of s.dogIds) if (!seen.has(id)) { seen.add(id); out.push(id); }
+      for (const id of s.dogIds) if (!out.includes(id)) out.push(id);
+      if (out.length >= 2) break;
     }
-    for (const d of state.dogs) if (!seen.has(d.id)) out.push(d.id);
-    return out.map((id) => byId(state.dogs, id)).filter(Boolean);
+    return out.slice(0, 2).map((id) => byId(state.dogs, id)).filter(Boolean);
   }, [state]);
-  const matches = q
-    ? state.dogs.filter((d) => {
-        const owners = ownersLabel(state, d);
-        const phones = d.contacts.map((c) => byId(state.contacts, c.contactId)?.phone || '').join(' ');
-        return (d.name + ' ' + owners + ' ' + phones).includes(q);
-      })
-    : recent.slice(0, 12);
+  const results = searchDogs(state, q);
   const toggleDog = (id) => setDogIds((ids) => (ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]));
+  const lastVisit = (d) => {
+    const s = state.stays.filter((x) => !x.cancelled && x.dogIds.includes(d.id) && x.start < Date.now()).sort((a, b) => b.start - a.start)[0];
+    return s ? `ביקור אחרון ${fmtDay(s.start)}` : 'עוד לא היה';
+  };
+  const dogRow = (d) => {
+    const on = dogIds.includes(d.id);
+    const phone = byId(state.contacts, d.contacts[0]?.contactId)?.phone;
+    return (
+      <button type="button" class={'row dogpick' + (on ? ' on' : '')} key={d.id} onClick={() => toggleDog(d.id)} aria-pressed={String(on)}>
+        <span class="tick">{on ? '✓' : ''}</span>
+        <span class="grow">
+          <b>{d.name}{d.flag ? ' ⚠' : ''}</b>
+          <small>{[ownersLabel(state, d), phone, d.breed].filter(Boolean).join(' · ') || 'בלי בעלים'}</small>
+          <small>{lastVisit(d)}</small>
+        </span>
+        {d.blocked && <span class="pill u">לא לקבל</span>}
+      </button>
+    );
+  };
+  const selectedDogs = dogIds.map((id) => byId(state.dogs, id)).filter(Boolean);
 
-  const charges = autoCharges(start, end, Math.max(1, dogIds.length + (newDog?.name ? 1 : 0)), state.settings);
+  const charges = picked ? autoCharges(start, end, Math.max(1, dogIds.length + (newDog?.name ? 1 : 0)), state.settings) : [];
 
   const save = () => {
     let ids = dogIds;
@@ -111,43 +137,64 @@ export function Avail({ state, params }) {
       <>
         <Top title="איזה כלב?" back={() => setStep(1)} sub={`${chosen.kennel.name} · ${fmtDateTime(start)} ← ${fmtDateTime(end)}`} />
         <main class="main">
-          <Field label="חיפוש כלב, בעלים או טלפון">
-            <input id="dog-search" type="search" value={q} onInput={(e) => setQ(e.currentTarget.value)} />
-          </Field>
-          <div class="list">
-            {matches.map((d) => (
-              <button type="button" class="row" key={d.id} onClick={() => toggleDog(d.id)} aria-pressed={String(dogIds.includes(d.id))}>
-                <span style="font-size:20px">{dogIds.includes(d.id) ? '☑' : '☐'}</span>
-                <span class="grow">
-                  {d.name}
-                  {d.flag ? ' ⚠' : ''}
-                  <small>{ownersLabel(state, d) || 'בלי בעלים'}</small>
-                </span>
-                {d.blocked && <span class="pill u">לא לקבל</span>}
-              </button>
-            ))}
-            {!matches.length && <div class="row static">לא נמצא. אפשר להוסיף כלב חדש למטה.</div>}
+          <div class="searchbox">
+            <span aria-hidden="true">⌕</span>
+            <input id="dog-search" type="search" autoFocus enterKeyHint="search" placeholder="שם כלב, בעלים או טלפון" value={q} onInput={(e) => setQ(e.currentTarget.value)} />
+            {q && <button type="button" class="textbtn" aria-label="נקה" onClick={() => setQ('')}>✕</button>}
           </div>
+
+          {selectedDogs.length > 0 && (
+            <div class="chips">
+              {selectedDogs.map((d) => (
+                <button type="button" class="chip" aria-pressed="true" key={d.id} onClick={() => toggleDog(d.id)}>{d.name} ✕</button>
+              ))}
+            </div>
+          )}
+
+          {q ? (
+            <>
+              <div class="sec">{results.length ? `נמצאו ${results.length}` : 'לא נמצא'}</div>
+              {results.length > 0 && <div class="list">{results.slice(0, 20).map(dogRow)}</div>}
+              {!newDog && (
+                <button class="btn ghost" type="button" onClick={() => setNewDog({ name: /\d/.test(q) ? '' : q, owner: '', phone: /\d/.test(q) ? q : '' })}>
+                  + {/\d/.test(q) ? 'כלב חדש עם הטלפון הזה' : `״${q}״ ככלב חדש`}
+                </button>
+              )}
+            </>
+          ) : (
+            recent.length > 0 && (
+              <>
+                <div class="sec">אחרונים</div>
+                <div class="list">{recent.map(dogRow)}</div>
+              </>
+            )
+          )}
+
           {newDog ? (
             <div class="card" style="padding:10px;display:grid;gap:8px">
               <div class="sec">כלב חדש · את שאר התיק משלימים אחר כך</div>
               <Field label="שם הכלב"><input id="nd-name" value={newDog.name} onInput={(e) => setNewDog({ ...newDog, name: e.currentTarget.value })} /></Field>
               <Field label="שם הבעלים"><input id="nd-owner" value={newDog.owner} onInput={(e) => setNewDog({ ...newDog, owner: e.currentTarget.value })} /></Field>
               <Field label="טלפון"><input id="nd-phone" type="tel" value={newDog.phone} onInput={(e) => setNewDog({ ...newDog, phone: e.currentTarget.value })} /></Field>
+              <button class="textbtn" type="button" onClick={() => setNewDog(null)}>ביטול כלב חדש</button>
             </div>
           ) : (
-            <button class="btn ghost" type="button" onClick={() => setNewDog({ name: q, owner: '', phone: '' })}>+ כלב חדש</button>
+            !q && <button class="btn ghost" type="button" onClick={() => setNewDog({ name: '', owner: '', phone: '' })}>+ כלב חדש</button>
           )}
-          <div class="sec">סיכום</div>
-          <div class="list">
-            <div class="row static"><span class="grow">תא</span><span class="end">{chosen.kennel.name} · {STATUS[chosen.status]}</span></div>
-            {charges.map((c) => (
-              <div class="row static" key={c.id}><span class="grow">{c.label}<small>{c.qty} × {money(c.unitPrice)}</small></span><span class="end num">{money(c.qty * c.unitPrice)}</span></div>
-            ))}
-            <div class="row static"><b class="grow">סה״כ</b><b class="num">{money(total(charges))}</b></div>
-          </div>
-          <label class="check"><span>לשלוח זימון לבעלים אחרי השמירה</span><input id="invite" type="checkbox" checked={invite} onChange={(e) => setInvite(e.currentTarget.checked)} /></label>
-          <div class="sub" style="color:var(--mute);font-size:13px;padding:0 4px">מחיר, תשלום, הערות ותוספות אפשר לשנות אחר כך במסך השהייה.</div>
+
+          {(dogIds.length > 0 || newDog?.name) && (
+            <>
+              <div class="sec">סיכום</div>
+              <div class="list">
+                <div class="row static"><span class="grow">תא</span><span class="end">{chosen.kennel.name} · {STATUS[chosen.status]}</span></div>
+                {charges.map((c) => (
+                  <div class="row static" key={c.id}><span class="grow">{c.label}<small>{c.qty} × {money(c.unitPrice)}</small></span><span class="end num">{money(c.qty * c.unitPrice)}</span></div>
+                ))}
+                <div class="row static"><b class="grow">סה״כ</b><b class="num">{money(total(charges))}</b></div>
+              </div>
+              <label class="check"><span>לשלוח זימון לבעלים אחרי השמירה</span><input id="invite" type="checkbox" checked={invite} onChange={(e) => setInvite(e.currentTarget.checked)} /></label>
+            </>
+          )}
         </main>
         <div class="dock">
           <button class="btn big" type="button" disabled={!dogIds.length && !newDog?.name} onClick={save}>שמור</button>
@@ -156,44 +203,25 @@ export function Avail({ state, params }) {
     );
   }
 
+  const nights = picked ? nightsBetween(start, end) : 0;
   return (
     <>
-      <Top title="יש מקום?" back="סגור" />
+      <Top title="יש מקום?" back="סגור" sub={picked ? `${fmtDay(start)} ← ${fmtDay(end)} · ${nights ? `${nights} לילות` : 'יום בלי לינה'}` : 'בחר תאריכים בלוח'} />
       <main class="main">
-        <div class="sec">מגיע</div>
-        <div class="chips">
-          {quickDates.map((d, i) => (
-            <button type="button" class="chip" key={d} aria-pressed={String(sDate === d)} onClick={() => setSDate(d)}>
-              {i === 0 ? 'היום' : i === 1 ? 'מחר' : fmtDay(toMs(d, '00:00'))}
-            </button>
-          ))}
-          <input type="date" class="chip" value={sDate} onInput={(e) => e.currentTarget.value && setSDate(e.currentTarget.value)} aria-label="תאריך הגעה" style="width:auto" />
-        </div>
-        {timeChips(sTime, setSTime)}
-
-        <div class="sec">יוצא</div>
-        <div class="chips">
-          {[1, 2, 3, 7].map((n) => (
-            <button type="button" class="chip" key={n} aria-pressed={String(!eDate && nights === n)} onClick={() => { setEDate(null); setNights(n); }}>
-              {n === 7 ? 'שבוע' : `${n} ${n === 1 ? 'לילה' : 'לילות'}`}
-            </button>
-          ))}
-          <input type="date" class="chip" value={endDate} onInput={(e) => e.currentTarget.value && setEDate(e.currentTarget.value)} aria-label="תאריך יציאה" style="width:auto" />
-        </div>
-        {timeChips(eTime, setETime)}
-
-        <div class="sec">כמה כלבים</div>
-        <div class="chips">
+        <RangeCalendar state={state} from={sDate} to={eDate} onChange={(a, b) => { setSDate(a); setEDate(b); setKennelId(null); }} />
+        {timeChips(sTime, setSTime, 'הגעה')}
+        {timeChips(eTime, setETime, 'איסוף')}
+        <div class="timerow">
+          <span>כלבים</span>
           {[1, 2, 3].map((n) => (
             <button type="button" class="chip" key={n} aria-pressed={String(count === n)} onClick={() => setCount(n)}>{n}</button>
           ))}
         </div>
 
-        {!valid ? (
-          <div class="issue block">היציאה לפני ההגעה.</div>
-        ) : (
+        {picked && !valid && <div class="issue block">שעת האיסוף לפני שעת ההגעה.</div>}
+        {valid && (
           <>
-            <div class={'card'} style={`padding:14px;text-align:center;background:var(--${freeCount ? 'ok' : 'warn'}-soft)`}>
+            <div class="card" style={`padding:14px;text-align:center;background:var(--${freeCount ? 'ok' : 'warn'}-soft)`}>
               <div style={`font-size:22px;font-weight:800;color:var(--${freeCount ? 'ok' : 'warn'})`}>{freeCount ? 'כן, יש מקום' : 'אין תא פנוי לגמרי'}</div>
               <div>{fmtDateTime(start)} ← {fmtDateTime(end)}</div>
               <div>{freeCount ? `${best.kennel.name} מתאים הכי טוב${freeCount > 1 ? ` · עוד ${freeCount - 1} פנויים` : ''}` : 'אפשר לבחור תא עם חפיפה ולאשר'}</div>
@@ -216,7 +244,7 @@ export function Avail({ state, params }) {
       </main>
       <div class="dock">
         <button class="btn big" type="button" disabled={!valid || !chosen} onClick={() => setStep(2)}>
-          {chosen ? `קבע ב${chosen.kennel.name}` : 'קבע'}
+          {valid && chosen ? `קבע ב${chosen.kennel.name}` : 'בחר הגעה ואיסוף'}
           <small>הבא: בחירת כלב</small>
         </button>
       </div>

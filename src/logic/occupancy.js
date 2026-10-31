@@ -1,7 +1,9 @@
-// Kennel occupancy rules. A stay occupies its kennel from `start` until it
-// actually departs (departedAt) or its planned `end`, whichever is earlier.
+// Kennel occupancy rules. A stay holds its kennel from the planned start – or
+// the actual arrival if the dog came early – until it actually departs or its
+// planned end, whichever is earlier. A late dog keeps its kennel reserved.
 import { DAY } from './util.js';
 
+export const effStart = (s) => (s.arrivedAt && s.arrivedAt < s.start ? s.arrivedAt : s.start);
 export const effEnd = (s) => (s.departedAt && s.departedAt < s.end ? s.departedAt : s.end);
 export const isActive = (s) => !s.cancelled;
 const overlap = (a1, a2, b1, b2) => a1 < b2 && b1 < a2;
@@ -26,9 +28,11 @@ export function sameFamily(a, b, dogsById) {
 
 function maxConcurrent(stay, others) {
   const ev = [];
-  for (const x of [{ s: stay.start, e: stay.end, n: stay.dogIds.length }, ...others.map((o) => ({ s: o.start, e: effEnd(o), n: o.dogIds.length }))]) {
-    const s = Math.max(x.s, stay.start);
-    const e = Math.min(x.e, stay.end);
+  const S = effStart(stay);
+  const E = effEnd(stay);
+  for (const x of [{ s: S, e: E, n: stay.dogIds.length }, ...others.map((o) => ({ s: effStart(o), e: effEnd(o), n: o.dogIds.length }))]) {
+    const s = Math.max(x.s, S);
+    const e = Math.min(x.e, E);
     if (s < e) ev.push([s, x.n], [e, -x.n]);
   }
   // at the same instant, departures are counted before arrivals
@@ -49,10 +53,12 @@ function maxConcurrent(stay, others) {
 export function checkStay(stay, { stays, kennels, dogs, settings }) {
   const dogsById = Object.fromEntries(dogs.map((d) => [d.id, d]));
   const issues = [];
+  const S = effStart(stay);
+  const E = effEnd(stay);
   const others = stays.filter((o) => isActive(o) && o.id !== stay.id);
 
   for (const o of others) {
-    if (overlap(stay.start, stay.end, o.start, effEnd(o)) && o.dogIds.some((id) => stay.dogIds.includes(id))) {
+    if (overlap(S, E, effStart(o), effEnd(o)) && o.dogIds.some((id) => stay.dogIds.includes(id))) {
       issues.push({ type: 'dog-double', level: 'block', other: o.id });
     }
   }
@@ -61,17 +67,18 @@ export function checkStay(stay, { stays, kennels, dogs, settings }) {
   const gap = (settings.cleaningGapMin || 0) * 60000;
   const stayAlone = stay.dogIds.some((id) => dogsById[id]?.aloneOnly);
   for (const o of same) {
+    const os = effStart(o);
     const oe = effEnd(o);
-    if (overlap(stay.start, stay.end, o.start, oe)) {
+    if (overlap(S, E, os, oe)) {
       if (stayAlone || o.dogIds.some((id) => dogsById[id]?.aloneOnly)) {
         issues.push({ type: 'alone', level: 'admin', other: o.id });
       }
       if (!sameFamily(stay, o, dogsById)) {
-        issues.push({ type: 'overlap', level: 'confirm', other: o.id, from: Math.max(stay.start, o.start), to: Math.min(stay.end, oe) });
+        issues.push({ type: 'overlap', level: 'confirm', other: o.id, from: Math.max(S, os), to: Math.min(E, oe) });
       }
     } else if (gap > 0) {
-      const before = stay.start - oe;
-      const after = o.start - stay.end;
+      const before = S - oe;
+      const after = os - E;
       if ((before >= 0 && before < gap) || (after >= 0 && after < gap)) {
         issues.push({ type: 'tight', level: 'confirm', other: o.id });
       }
@@ -90,7 +97,7 @@ export function checkStay(stay, { stays, kennels, dogs, settings }) {
 
 /** Stays physically in a kennel at time t. */
 export const presentAt = (kennelId, t, stays) =>
-  stays.filter((s) => isActive(s) && s.kennelId === kennelId && s.start <= t && t < effEnd(s));
+  stays.filter((s) => isActive(s) && s.kennelId === kennelId && effStart(s) <= t && t < effEnd(s));
 
 const RANK = { free: 0, partial: 1, full: 2 };
 
@@ -107,7 +114,7 @@ export function rankKennels(start, end, dogCount, ctx) {
       const status = issues.some((i) => i.level !== 'confirm') ? 'full' : issues.length ? 'partial' : 'free';
       const ks = ctx.stays.filter((s) => isActive(s) && s.kennelId === k.id);
       const prev = ks.map(effEnd).filter((e) => e <= start);
-      const next = ks.map((s) => s.start).filter((s) => s >= end);
+      const next = ks.map(effStart).filter((s) => s >= end);
       const score = (prev.length ? start - Math.max(...prev) : 30 * DAY) + (next.length ? Math.min(...next) - end : 30 * DAY);
       return { kennel: k, status, issues, score };
     })
@@ -116,6 +123,6 @@ export function rankKennels(start, end, dogCount, ctx) {
 
 /** When does a kennel that is empty at t next get a dog (ms) – or null. */
 export function freeUntil(kennelId, t, stays) {
-  const next = stays.filter((s) => isActive(s) && s.kennelId === kennelId && s.start > t).map((s) => s.start);
+  const next = stays.filter((s) => isActive(s) && s.kennelId === kennelId && effStart(s) > t).map(effStart);
   return next.length ? Math.min(...next) : null;
 }

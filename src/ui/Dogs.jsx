@@ -37,7 +37,7 @@ export function Dogs({ state }) {
                   </span>
                   {d.blocked && <span class="pill u">לא לקבל</span>}
                   {owe > 0 && <span class="pill u">{money(owe)}</span>}
-                  <span class="chev">‹</span>
+                  <span class="chev" dir="ltr">‹</span>
                 </button>
               );
             })}

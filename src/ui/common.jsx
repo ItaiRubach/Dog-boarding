@@ -29,7 +29,7 @@ export function Top({ title, sub, back, right, logo }) {
     <header class="top">
       {back && (
         <button class="textbtn" type="button" onClick={() => (typeof back === 'function' ? back() : ui.back())}>
-          ‹ {typeof back === 'string' ? back : 'חזרה'}
+          <span dir="ltr">›</span> {typeof back === 'string' ? back : 'חזרה'}
         </button>
       )}
       {logo && <Logo />}

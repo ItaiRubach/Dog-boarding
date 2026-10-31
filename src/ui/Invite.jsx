@@ -45,7 +45,7 @@ export function InviteSheet({ state, stayId, onClose }) {
         1 · שלח הודעה בוואטסאפ
       </a>
       <button class="btn soft" type="button" onClick={shareIcs}>
-        2 · שתף קובץ יומן (תזכורת {state.settings.reminders.join(' ו-')} ימים לפני)
+        2 · שתף זימון ליומן (הגעה עד איסוף · תזכורת {state.settings.reminders.join(' ו-')} ימים לפני)
       </button>
       <button class="btn ghost" type="button" onClick={onClose}>
         סגור

@@ -96,9 +96,9 @@ export function Home({ state }) {
         sub={`${isToday ? fmtDayLong(day) + ' · ' : ''}${dogCount} כלבים בפנסיון`}
         right={
           <>
-            <button class="iconbtn" type="button" aria-label="יום קודם" onClick={() => setDay(addDays(day, -1))}>›</button>
+            <button class="iconbtn" type="button" aria-label="יום קודם" onClick={() => setDay(addDays(day, -1))}><span dir="ltr">›</span></button>
             {!isToday && <button class="iconbtn" type="button" aria-label="היום" onClick={() => setDay(dayStart(Date.now()))}>◉</button>}
-            <button class="iconbtn" type="button" aria-label="יום הבא" onClick={() => setDay(addDays(day, 1))}>‹</button>
+            <button class="iconbtn" type="button" aria-label="יום הבא" onClick={() => setDay(addDays(day, 1))}><span dir="ltr">‹</span></button>
             <button class="iconbtn" type="button" aria-label="הגדרות" onClick={() => ui.go('settings')}>⚙</button>
           </>
         }
@@ -132,6 +132,7 @@ export function Home({ state }) {
                     {dogNames(state, s.dogIds)} {e.kind === 'in' ? 'נכנס' : 'יוצא'} · {kennelName(state, s.kennelId)}
                     <small>
                       {late ? (e.kind === 'in' ? 'עוד לא הגיע · ' : 'עוד לא יצא · ') : ''}
+                      {e.done ? `${e.kind === 'in' ? 'הגיע' : 'יצא'} בפועל ${fmtTime(e.kind === 'in' ? s.arrivedAt : s.departedAt)} · ` : ''}
                       {paid ? 'שולם' : `לגבות ${money(balance(s))}`}
                     </small>
                   </button>

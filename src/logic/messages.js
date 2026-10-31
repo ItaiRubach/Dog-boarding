@@ -48,35 +48,31 @@ function fold(line) {
   return out;
 }
 
-function vevent({ uid, title, at, location, description, reminders, stamp }) {
-  const lines = [
-    'BEGIN:VEVENT',
-    `UID:${uid}`,
-    `DTSTAMP:${utc(stamp)}`,
-    `DTSTART:${utc(at)}`,
-    `DTEND:${utc(at + 30 * 60000)}`,
-    `SUMMARY:${esc(title)}`,
-  ];
-  if (location) lines.push(`LOCATION:${esc(location)}`);
-  if (description) lines.push(`DESCRIPTION:${esc(description)}`);
-  for (const d of reminders) {
-    lines.push('BEGIN:VALARM', `TRIGGER:-P${d}D`, 'ACTION:DISPLAY', `DESCRIPTION:${esc(title)}`, 'END:VALARM');
-  }
-  lines.push('END:VEVENT');
-  return lines;
-}
-
-/** Arrival + pickup events. Same UID on resend, so the client's calendar updates instead of duplicating. */
+/**
+ * One event from arrival to pickup, with the reminders set in settings
+ * (days before the arrival). Same UID on resend, so the client's calendar
+ * updates the event instead of duplicating it.
+ */
 export function buildStayIcs({ id, dogNames, start, end, location, reminders = [7, 2], now = Date.now() }) {
+  const title = `${dogNames} בפנסיון`;
   const lines = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
     'PRODID:-//yuval-pension//he',
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
-    ...vevent({ uid: `${id}-in@yuval-pension`, title: `${dogNames} בפנסיון – הגעה`, at: start, location, reminders, stamp: now }),
-    ...vevent({ uid: `${id}-out@yuval-pension`, title: `${dogNames} בפנסיון – איסוף`, at: end, location, reminders, stamp: now }),
-    'END:VCALENDAR',
+    'BEGIN:VEVENT',
+    `UID:${id}@yuval-pension`,
+    `DTSTAMP:${utc(now)}`,
+    `DTSTART:${utc(start)}`,
+    `DTEND:${utc(end)}`,
+    `SUMMARY:${esc(title)}`,
+    `DESCRIPTION:${esc(`הגעה: ${fmtDateTime(start)}\nאיסוף: ${fmtDateTime(end)}`)}`,
   ];
+  if (location) lines.push(`LOCATION:${esc(location)}`);
+  for (const d of reminders) {
+    lines.push('BEGIN:VALARM', `TRIGGER:-P${d}D`, 'ACTION:DISPLAY', `DESCRIPTION:${esc(`${title} בעוד ${d === 1 ? 'יום' : d === 2 ? 'יומיים' : `${d} ימים`}`)}`, 'END:VALARM');
+  }
+  lines.push('END:VEVENT', 'END:VCALENDAR');
   return lines.map(fold).join('\r\n') + '\r\n';
 }

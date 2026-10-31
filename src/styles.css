@@ -20,7 +20,7 @@
   }
 }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-html, body { height: 100%; margin: 0; }
+html, body { height: 100%; margin: 0; touch-action: manipulation; -webkit-text-size-adjust: 100%; }
 body { background: var(--bg); color: var(--fg); font-family: var(--font); font-size: 15px; line-height: 1.35; overscroll-behavior-y: none; }
 #app { height: 100%; }
 button, input, select, textarea { font: inherit; color: inherit; }
@@ -158,3 +158,34 @@ a { color: var(--accent); }
 /* plan cell wrapper */
 .kcell { display: grid; }
 .kcell > .pcell { height: 100%; }
+
+/* range calendar */
+.cal { background: var(--card); border-radius: 14px; padding: 8px 8px 10px; display: grid; gap: 6px; }
+.cal-h { display: flex; align-items: center; justify-content: space-between; }
+.cal-h b { font-size: 17px; }
+.cal-h .iconbtn { background: var(--bg); }
+.cal-h .iconbtn:disabled { opacity: .3; }
+.cal-g { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; }
+.cal-w { text-align: center; font-size: 12px; color: var(--mute); font-weight: 700; padding: 2px 0; }
+.cal-d { border: 0; background: transparent; border-radius: 10px; min-height: 46px; display: grid; align-content: center; justify-items: center; gap: 1px; cursor: pointer; padding: 2px 0; }
+.cal-d b { font-size: 16px; font-weight: 700; }
+.cal-d small { font-size: 10.5px; color: var(--ok); font-weight: 700; }
+.cal-d small.none { color: var(--unpaid); }
+.cal-d:disabled { opacity: .3; cursor: default; }
+.cal-d.today b { color: var(--accent); text-decoration: underline; }
+.cal-d.mid { background: var(--accent-soft); border-radius: 0; }
+.cal-d.edge { background: var(--accent); color: var(--accent-ink); }
+.cal-d.edge small { color: var(--accent-ink); }
+.cal-f { text-align: center; color: var(--mute); font-size: 13px; }
+.timerow { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.timerow > span { font-weight: 800; font-size: 14px; min-width: 52px; }
+.timerow input.chip { width: auto; padding: 6px 10px; }
+
+/* dog search */
+.searchbox { display: flex; align-items: center; gap: 8px; background: var(--card); border-radius: 14px; padding: 4px 12px; border: 2px solid var(--accent); }
+.searchbox span { color: var(--mute); font-size: 20px; }
+.searchbox input { flex: 1; border: 0; background: transparent; padding: 10px 0; outline: none; font-size: 17px; min-width: 0; }
+.searchbox input::-webkit-search-cancel-button { display: none; }
+.dogpick .tick { width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--line); display: grid; place-items: center; font-weight: 800; color: var(--accent-ink); flex: none; }
+.dogpick.on .tick { background: var(--accent); border-color: var(--accent); }
+.dogpick.on { background: var(--accent-soft); }

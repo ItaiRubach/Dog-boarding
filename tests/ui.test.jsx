@@ -26,6 +26,9 @@ describe('app smoke', () => {
     render(<App />);
     const before = getState().stays.length;
     click(screen.getByText('יש מקום?'));
+    click(screen.getByLabelText('חודש הבא'));
+    click(screen.getByLabelText(/^10 ב/));
+    click(screen.getByLabelText(/^13 ב/));
     expect(screen.getAllByText(/יש מקום|אין תא פנוי/).length).toBeGreaterThan(0);
     click(screen.getByText(/^קבע ב/));
     fireEvent.input(document.getElementById('dog-search'), { target: { value: 'ג׳ינ' } });

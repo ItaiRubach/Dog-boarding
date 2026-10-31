@@ -56,9 +56,9 @@ export function Board({ state }) {
     <>
       <Top title="לוח" sub={`${new Date(from).getDate()}.${new Date(from).getMonth() + 1} – ${new Date(addDays(to, -1)).getDate()}.${new Date(addDays(to, -1)).getMonth() + 1}`}
         right={<>
-          <button class="iconbtn" type="button" aria-label="שבוע קודם" onClick={() => setFrom(addDays(from, -7))}>›</button>
+          <button class="iconbtn" type="button" aria-label="שבוע קודם" onClick={() => setFrom(addDays(from, -7))}><span dir="ltr">›</span></button>
           <button class="iconbtn" type="button" aria-label="השבוע" onClick={() => setFrom(weekStart(Date.now()))}>◉</button>
-          <button class="iconbtn" type="button" aria-label="שבוע הבא" onClick={() => setFrom(addDays(from, 7))}>‹</button>
+          <button class="iconbtn" type="button" aria-label="שבוע הבא" onClick={() => setFrom(addDays(from, 7))}><span dir="ltr">‹</span></button>
         </>} />
       <main class="main">
         <div class="board">

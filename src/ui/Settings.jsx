@@ -15,7 +15,7 @@ export function Settings({ state }) {
     <button type="button" class="row" onClick={() => ui.go(route)}>
       <span class="grow">{label}</span>
       <span class="end">{end}</span>
-      <span class="chev">‹</span>
+      <span class="chev" dir="ltr">‹</span>
     </button>
   );
   return (
@@ -83,12 +83,21 @@ export function SetMessage({ state }) {
           <textarea id="m-t" style="min-height:180px" value={s.messageTemplate} onInput={(e) => update((st) => { st.settings.messageTemplate = e.currentTarget.value; })} />
         </Field>
         <div class="sub" style="color:var(--mute);font-size:13px;padding:0 4px">אפשר להשתמש ב: {'{כלב} {בעלים} {הגעה} {איסוף} {סכום}'}</div>
-        <Field label="תזכורות ביומן של הלקוח (ימים לפני, מופרדים בפסיק)">
-          <input id="m-r" value={s.reminders.join(', ')} onChange={(e) => update((st) => {
-            const r = e.currentTarget.value.split(/[,\s]+/).map(Number).filter((n) => n > 0);
-            st.settings.reminders = r.length ? r : [7, 2];
-          })} />
-        </Field>
+        <div class="sec">תזכורות בזימון ליומן של הלקוח · לפני ההגעה</div>
+        <div class="chips">
+          {[14, 7, 3, 2, 1].map((d) => {
+            const on = s.reminders.includes(d);
+            return (
+              <button type="button" class="chip" key={d} aria-pressed={String(on)} onClick={() => update((st) => {
+                const r = on ? st.settings.reminders.filter((x) => x !== d) : [...st.settings.reminders, d];
+                st.settings.reminders = r.sort((a, b) => b - a);
+              })}>
+                {d === 14 ? 'שבועיים' : d === 7 ? 'שבוע' : d === 2 ? 'יומיים' : d === 1 ? 'יום' : `${d} ימים`}
+              </button>
+            );
+          })}
+        </div>
+        <div class="sub" style="color:var(--mute);font-size:13px;padding:0 4px">{s.reminders.length ? 'הזימון הוא אירוע אחד מההגעה עד האיסוף, עם התזכורות שנבחרו.' : 'בלי תזכורות. הזימון יגיע בלי התראה.'}</div>
       </main>
     </>
   );
