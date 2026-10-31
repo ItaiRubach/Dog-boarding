@@ -8,9 +8,11 @@ import { isPaid, balance } from '../logic/pricing.js';
 import { byId, dogNames, kennelName, stayPrimary } from '../model.js';
 import { telLink, waLink } from '../logic/messages.js';
 import { lessonAddress } from './Training.jsx';
+import { useSync } from '../sync.js';
 
 export function Home({ state }) {
   const ui = useUI();
+  const sync = useSync();
   const [day, setDay] = useState(dayStart(Date.now()));
   const isToday = day === dayStart(Date.now());
   const [slot, setSlot] = useState('now');
@@ -94,7 +96,7 @@ export function Home({ state }) {
       <Top
         logo
         title={isToday ? 'היום' : fmtDayLong(day)}
-        sub={`${isToday ? fmtDayLong(day) + ' · ' : ''}${dogCount} כלבים בפנסיון`}
+        sub={`${isToday ? fmtDayLong(day) + ' · ' : ''}${dogCount} כלבים בפנסיון${sync.status === 'offline' ? ' · ⚠ לא מחובר' : sync.status === 'saving' ? ' · שומר…' : ''}`}
         right={
           <>
             <button class="iconbtn" type="button" aria-label="יום קודם" onClick={() => setDay(addDays(day, -1))}><span dir="ltr">›</span></button>

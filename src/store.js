@@ -50,6 +50,11 @@ export async function loadState() {
 
 export const getState = () => state;
 
+// Changes Yuval makes on this phone (not ones that arrive from the cloud) – the sync listens here.
+const localSubs = new Set();
+export const onLocalChange = (fn) => (localSubs.add(fn), () => localSubs.delete(fn));
+const localChanged = () => localSubs.forEach((f) => f());
+
 /** fn receives a copy and may mutate it. */
 export function update(fn) {
   const next = structuredClone(state);
@@ -57,9 +62,18 @@ export function update(fn) {
   state = next;
   emit();
   persist();
+  localChanged();
 }
 
 export function replaceState(next) {
+  state = migrate(next);
+  emit();
+  persist();
+  localChanged();
+}
+
+/** A newer copy from the cloud: show and keep it, without sending it back. */
+export function applyRemote(next) {
   state = migrate(next);
   emit();
   persist();

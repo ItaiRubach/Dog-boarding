@@ -8,12 +8,14 @@ import { Board } from './Board.jsx';
 import { Dogs, Dog } from './Dogs.jsx';
 import { Training } from './Training.jsx';
 import { Settings, SetGeneral, SetMessage, SetPrices, SetPlan, SetBackup } from './Settings.jsx';
+import { Account } from './Account.jsx';
+import { useSync } from '../sync.js';
 import { useStore, update, getState } from '../store.js';
 import { checkStay } from '../logic/occupancy.js';
 
 const SCREENS = {
   home: Home, board: Board, dogs: Dogs, dog: Dog, stay: Stay, avail: Avail, training: Training,
-  settings: Settings, 'set-general': SetGeneral, 'set-message': SetMessage, 'set-prices': SetPrices, 'set-plan': SetPlan, 'set-backup': SetBackup,
+  settings: Settings, 'set-general': SetGeneral, 'set-message': SetMessage, 'set-prices': SetPrices, 'set-plan': SetPlan, 'set-backup': SetBackup, account: Account,
 };
 const TABS = [['home', '◉', 'היום'], ['board', '▦', 'לוח'], ['dogs', '🐾', 'כלבים']];
 
@@ -25,6 +27,8 @@ export function App() {
   const [toastMsg, setToastMsg] = useState('');
   const toastTimer = useRef();
   const keyRef = useRef(1);
+  const sync = useSync();
+  const lastStatus = useRef(sync.status);
 
   const commitStay = (stay, opts, approvals = []) => {
     update((s) => {
@@ -61,6 +65,11 @@ export function App() {
     }),
     [],
   );
+
+  if (sync.status !== lastStatus.current) {
+    if (sync.status === 'conflict') setTimeout(() => ui.toast('עודכן ממכשיר אחר · השינוי האחרון לא נשמר'), 0);
+    lastStatus.current = sync.status;
+  }
 
   const top = stack[stack.length - 1];
   const Screen = SCREENS[top.name] || Home;

@@ -11,6 +11,7 @@
     "icons": "node scripts/make-icons.js"
   },
   "dependencies": {
+    "@supabase/supabase-js": "2.45.4",
     "idb-keyval": "^6.2.1",
     "preact": "^10.24.3"
   },

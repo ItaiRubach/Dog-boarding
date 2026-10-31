@@ -6,11 +6,13 @@ import { uid, money, dateKey } from '../logic/util.js';
 import { isActive } from '../logic/occupancy.js';
 import { byId, defaultState, seedDemo } from '../model.js';
 import { leadText } from '../logic/messages.js';
+import { useSync, syncLabel } from '../sync.js';
 
 const METHODS = { nights: 'לפי לילות', days: 'לפי ימים בלוח', nightsLate: 'לילות + איסוף מאוחר' };
 
 export function Settings({ state }) {
   const ui = useUI();
+  const sync = useSync();
   const s = state.settings;
   const row = (label, end, route) => (
     <button type="button" class="row" onClick={() => ui.go(route)}>
@@ -40,7 +42,8 @@ export function Settings({ state }) {
         <div class="list">
           {row('קוד מנהל', '••••', 'set-general')}
           {row('גיבוי, שחזור ונתוני דוגמה', '', 'set-backup')}
-          <div class="row static"><span class="grow">יומן Google<small>יחובר כשיהיה חשבון Google Cloud אישי</small></span><span class="pill w">בהמשך</span></div>
+          {row('ענן וסנכרון', syncLabel(sync), 'account')}
+          <div class="row static"><span class="grow">יומן Google<small>בשלב הבא</small></span><span class="pill w">בהמשך</span></div>
         </div>
       </main>
     </>
@@ -265,6 +268,8 @@ export function SetPlan({ state }) {
 
 export function SetBackup({ state }) {
   const ui = useUI();
+  const sync = useSync();
+  const shared = !!(sync.session && sync.pensionId);
   const [confirm, setConfirm] = useState(null);
   const exportJson = async () => {
     const file = new File([JSON.stringify(state)], `pension-backup-${dateKey(Date.now())}.json`, { type: 'application/json' });
@@ -294,12 +299,14 @@ export function SetBackup({ state }) {
     <>
       <Top title="גיבוי ושחזור" back />
       <main class="main">
-        <div class="issue">הנתונים שמורים כרגע רק בטלפון הזה. כדאי לשמור גיבוי פעם בשבוע (למשל לוואטסאפ לעצמך או ל-iCloud Drive).</div>
+        <div class="issue">{shared ? 'הנתונים מגובים אוטומטית בענן. גיבוי לקובץ הוא שכבת הגנה נוספת.' : 'הנתונים שמורים כרגע רק בטלפון הזה. כדאי לשמור גיבוי פעם בשבוע (למשל לוואטסאפ לעצמך או ל-iCloud Drive), או להתחבר לענן.'}</div>
         <button class="btn" type="button" onClick={exportJson}>שמור גיבוי</button>
         <label class="btn ghost" style="text-align:center">
           שחזר מגיבוי
           <input type="file" accept="application/json,.json" style="display:none" onChange={importJson} />
         </label>
+        {shared && <div class="issue block">הטלפון מחובר לפנסיון המשותף, ולכן נתוני דוגמה ומחיקת הכל חסומים, כדי לא לדרוס את הנתונים האמיתיים. שחזור מגיבוי יחליף גם את הנתונים בענן.</div>}
+        {!shared && <>
         <div class="sec">נתוני דוגמה</div>
         {confirm === 'demo' ? (
           <div class="btnrow">
@@ -317,6 +324,7 @@ export function SetBackup({ state }) {
         ) : (
           <button class="btn red" type="button" onClick={() => setConfirm('wipe')}>מחק הכל והתחל מאפס</button>
         )}
+        </>}
         <div class="sub" style="color:var(--mute);font-size:13px;padding:0 4px">{state.dogs.length} כלבים · {state.stays.length} שהיות · {state.trainings.length} שיעורים · מחירון {money(state.settings.priceList[0]?.price || 0)} ללילה</div>
       </main>
     </>
